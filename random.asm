@@ -9,7 +9,7 @@ TITLE Program random     (random.asm)
 ; User inputs how many numbers to generate ranging 10 to 200
 
 DISPLAYMIN = 10 ;Lower limit to the number of random numbers terms to display 
-DISPLAYMAX = 200 ;Upper limit to the number of Fibonacci terms to display
+DISPLAYMAX = 200 ;Upper limit to the number of random numbers to display
 LINELIMIT = 10;Number of numbers per a line
 RANDLO = 100;Lower limit of a random number
 RANDHI = 999;Upper liomit of random number
@@ -30,23 +30,45 @@ promSize	BYTE	"How many random numbers do you want displayed? [10...200] ", 0
 promEnd		BYTE	"Results verfied by Sebastian and Benji, my dog." ,0
 promBye		BYTE	"Good bye and have a great day", 0
 
-randNums	DWORD	DISPLAYMAX DUP(0);Random numbers to display
-numDis		DWORD	?;Numberof composite numbers to display
+ranNums		DWORD	200 DUP(?);Array for random numbers, 0 is the end term
+num			DWORD	?;Number of numbers to display
+
 
 
 
 .code
 main PROC
+	;Array of random numbers
+
 	;Seed for random number generation
 	call	Randomize
 
 	;Calls intro
 	call	intro
 
-	;User input of number of composite numbers to display
-	push	OFFSET numDis
+	;Gets user input from user
+	push	OFFSET num
 	call	getInput
 
+	;Display random numbers unsort
+	push	OFFSET ranNums
+	push	num
+	call	getNums
+
+	;Display random numbers unsort
+	push	OFFSET ranNums
+	push	num
+	call	disNums
+
+	;Sorts array of numbers
+	push	OFFSET ranNums
+	push	num
+	call	sort
+
+	;Display sorted random numbers
+	push	OFFSET ranNums
+	push	num
+	call	disNums
 
 	exit	; exit to operating system
 main ENDP
@@ -115,7 +137,8 @@ userInput:
 	jmp		userInput
 
 endData:
-	;Move user input to variable 
+
+	;Set amound of random numbers to display
 	mov		ebx, [ebp+8]
 	mov		[ebx], eax
 
@@ -127,14 +150,12 @@ getInput ENDP
 
 ;Description: Checks to see if user input is between the limits
 ;Recives: addresses of parameters on the system stack
-;Returns: 1 if user input is not within limits or 0 if no error
-;change registers: ebx, edx
+;Returns: Returns the results 
 checkInput PROC
 
 	;set up stack frame
 	push	ebp
 	mov		ebp, esp
-
 
 	;Checks to userinput is within limits
 	mov		ebx, [ebp+8]
@@ -153,6 +174,178 @@ endCheck:
 	;restore stack
 	pop		ebp
 	ret		4
+
 checkInput ENDP
+
+;Description: Checks to see if user input is between the limits
+;Recives: addresses of parameters on the system stack
+;Returns: Returns the results 
+getNums PROC
+	;set up stack frame
+	push	ebp
+	mov		ebp, esp
+
+	;Set counter
+	mov		ecx, [ebp+8]
+
+	;Sets first element of random number array
+	mov		ebx, [ebp+12]
+
+;Loop to get and set random numbers in array
+setRand:
+		;Sets the range for random number
+		mov		eax, RANDHI
+		sub		eax, RANDLO
+		inc		eax
+
+		;Call random number
+		call	RandomRange
+		add		eax, RANDLO
+
+		;Moves random number genereated to array
+		mov		[ebx], eax
+
+		;Moves to next number in array
+		add		ebx, TYPE ebx
+		loop	setRand
+
+	;restore stack
+	pop		ebp
+	ret		8
+
+getNums ENDP
+
+;Description: Checks to see if user input is between the limits
+;Recives: addresses of parameters on the system stack
+;Returns: Returns the results 
+disNums PROC
+	;set up stack frame
+	push	ebp
+	mov		ebp, esp
+
+	;Set first element of number array
+	mov		ebx, [ebp+12]
+	mov		eax, [ebx]
+
+	;Set counter and line count 
+	mov		ecx, [ebp+8]
+	mov		edx, LINELIMIT
+
+;Loop to print array of numbers
+print:
+	;print random number
+	call	WriteDec
+
+	;Tabs over
+	mov		al, TAB
+	call	WriteChar
+
+	;Moves to next element
+	add		ebx, TYPE ebx
+	mov		eax, [ebx]
+
+	;Decrease line loop by 1
+	dec		edx
+
+	;When linelimit is 0, go to next line and set linelimit back to the limit (currently 10)
+	cmp		edx, 0
+	jne		sameLine
+	call	CrLf
+	mov		edx, LINELIMIT
+
+sameLine:
+	loop		print
+
+	
+
+endPrint:
+
+	call	CrLf
+	;restore stack
+	pop		ebp
+	ret		8
+
+disNums ENDP
+
+;Description: sort array of numbers, quicksort is used
+;Recives: addresses of parameters on the system stack
+;Returns: Returns the results 
+sort PROC
+	;set up stack frame
+	push	ebp
+	mov		ebp, esp
+
+	mov		ecx, [ebp+8]
+	dec		ecx
+outLoop:
+	mov		esi, ecx
+	push	ecx
+	dec		ecx
+innerLoop:
+	mov		edi, [ebp+12]
+	mov		eax, TYPE ebx
+	mul		ecx
+	add		edi, eax
+	
+	mov		ebx, [ebp+12]
+	mov		eax, TYPE ebx
+	mul		esi
+	add		ebx, eax
+
+	mov		eax, [ebx]
+	mov		edx, [edi]
+	cmp		edx, eax
+	jng		notGtr
+	mov		esi, ecx
+
+notGtr:
+	cmp		ecx, 0
+	jle		endIn
+	dec		ecx
+	jmp		innerLoop
+endIn:
+	pop		ecx
+	push	ecx
+	push	esi
+	push	[ebp+12]
+	call	swap
+	loop	outLoop
+
+	pop		ebp
+	ret		8
+sort ENDP
+
+
+swap PROC
+
+	;set up stack frame
+	push	ebp
+	mov		ebp, esp
+	pushad
+
+
+	mov		ecx, [ebp+8]
+	mov		edi, TYPE edx
+	mov		eax, [ebp+12]
+	mul		edi
+	add		ecx, eax
+
+	mov		ebx, [ebp+8]
+	mov		eax, [ebp+16]
+	mul		edi
+	add		ebx, eax
+
+	mov		eax, [ebx]
+	mov		edx, [ecx]
+	mov		[ebx], edx
+	mov		[ecx], eax
+
+	popad
+	;restore stack
+	pop		ebp
+	ret		12
+
+swap ENDP
+
 
 END main
