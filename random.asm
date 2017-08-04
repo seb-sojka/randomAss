@@ -27,7 +27,8 @@ promFunc1	BYTE	"I will display the number of random number you would like to see
 promFunc2	BYTE	"The random numbers can range fromm 100 to 999", 0
 promError	BYTE	"Error - User input outside of set boundary.", 0
 promSize	BYTE	"How many random numbers do you want displayed? [10...200] ", 0	
-promEnd		BYTE	"Results verfied by Sebastian and Benji, my dog." ,0
+promEnd		BYTE	"Results verfied by Sebastian and Benji, my dog.", 0
+promMed		BYTE	"Median: ", 0
 promBye		BYTE	"Good bye and have a great day", 0
 
 ranNums		DWORD	200 DUP(?);Array for random numbers, 0 is the end term
@@ -65,6 +66,11 @@ main PROC
 	push	num
 	call	sort
 
+	;Get and display the median of array of random numbers 
+	push	OFFSET ranNums
+	push	num
+	call	median
+
 	;Display sorted random numbers
 	push	OFFSET ranNums
 	push	num
@@ -72,6 +78,63 @@ main PROC
 
 	exit	; exit to operating system
 main ENDP
+
+median PROC
+	;set up stack frame
+	push	ebp
+	mov		ebp, esp
+
+	mov		eax, [ebp+8]
+	cdq
+	mov		ecx, 2
+	div		ecx
+	dec		eax
+
+	cmp		edx, 0
+	je		Nums2
+	
+	mov		ebx, [ebp+12]
+	mov		edx, TYPE ebx
+	mul		edx
+	add		ebx, eax
+
+	mov		eax, [ebx]	
+
+	jmp		endMed
+Nums2:
+	mov		ebx, [ebp+12]
+	mov		edx, TYPE ebx
+	mul		edx
+	add		ebx, eax
+
+	mov		ecx, ebx
+	add		ecx, TYPE ecx
+	
+	mov		edx, [ebx]
+	mov		eax, [ecx]
+
+	add		eax, edx
+
+	mov		ebx, 2
+	cdq		
+	div		ebx
+
+	add		eax, edx
+
+endMed:
+
+	mov		edx, OFFSET promMed
+	call	WriteString
+
+	call	WriteDec
+	call	CrLf
+	call	CrLf
+
+	;restore stack
+	pop		ebp
+	ret		8
+median ENDP
+
 
 ;Description: Display name of program, the programmer, and function of the program
 ;Recives: None
@@ -295,10 +358,10 @@ innerLoop:
 	mov		eax, [ebx]
 	mov		edx, [edi]
 	cmp		edx, eax
-	jng		notGtr
+	jg		notLs
 	mov		esi, ecx
 
-notGtr:
+notLs:
 	cmp		ecx, 0
 	jle		endIn
 	dec		ecx
